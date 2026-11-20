@@ -219,7 +219,7 @@
     button, a { touch-action:manipulation; }
     input, select, textarea { font-size:16px !important; }
     @media (max-width:640px) {
-      header { padding-left:12px !important; padding-right:12px !important; }
+      header { padding-left:12px !important; padding-right:12px !important; padding-top:calc(10px + env(safe-area-inset-top)) !important; }
       #install-app span { display:none; }
       #left-panel, #right-panel { height:100%; }
       #panel-scroll-area { padding-bottom:calc(18px + env(safe-area-inset-bottom)) !important; }
@@ -246,6 +246,18 @@
     #expense-list .expense-day-group{border:0!important;background:transparent!important;padding:0!important;margin-bottom:8px!important;}
     #expense-list .expense-day-title{font-size:11px;font-weight:700;color:#315f60;padding:4px 2px 2px;border-bottom:1px solid #dce7df;margin-bottom:4px;}
     #expense-list .expense-row{border-radius:10px!important;margin:3px 0!important;}
+
+    /* App-like bottom navigation: active tab, touch targets, safe area */
+    #bottom-nav { background:rgba(255,254,250,.97)!important; border-top:1px solid #dbe5de!important; box-shadow:0 -8px 24px rgba(20,45,54,.08)!important; padding:7px 8px calc(10px + env(safe-area-inset-bottom))!important; min-height:calc(72px + env(safe-area-inset-bottom)); gap:5px; }
+    #bottom-nav .nav-item { flex:1; min-width:0; min-height:50px; border:0; background:transparent; border-radius:15px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; color:#758287; font-size:10px; font-weight:650; transition:background .15s,color .15s,transform .15s; }
+    #bottom-nav .nav-item i { font-size:19px; }
+    #bottom-nav .nav-item[data-active="true"] { color:#244f50; background:#e5efea; box-shadow:inset 0 0 0 1px #c8ddd2; }
+    #bottom-nav .nav-item[data-active="true"] i { transform:translateY(-1px); }
+    #bottom-nav .nav-item:active { transform:scale(.96); }
+    .timeline-item.current-time-card > div.rounded-2xl { border:2px solid #315f60!important; box-shadow:0 0 0 3px rgba(49,95,96,.12),0 8px 22px rgba(20,45,54,.08)!important; }
+    .timeline-item.current-time-card .current-time-label { display:inline-flex!important; }
+    @media(max-width:640px){ html,body{height:100%;min-height:0;overflow:hidden;} body{height:100dvh;min-height:100dvh;} #bottom-nav{min-height:calc(76px + env(safe-area-inset-bottom));padding-bottom:calc(10px + env(safe-area-inset-bottom))!important;} #bottom-nav .nav-item{min-height:50px;padding:5px 2px!important;} #panel-scroll-area{overscroll-behavior:contain;-webkit-overflow-scrolling:touch;} }
+
   </style>
 </head>
 <body class="bg-slate-50 text-slate-800 antialiased h-screen flex flex-col overflow-hidden">
@@ -370,11 +382,7 @@
           <div class="h-2.5 rounded-full bg-slate-100 overflow-hidden"><div id="daily-budget-bar" class="h-full rounded-full transition-all" style="width:0%;background:#6f9c86"></div></div><div class="flex justify-between text-[10px] text-slate-500 mt-1"><span id="daily-budget-paid"></span><span id="daily-budget-remaining"></span></div>
         </div>
 
-        <div id="day-transport-expense" class="hidden rounded-xl border border-emerald-100 bg-emerald-50 p-3 mb-2">
-          <div class="font-bold text-xs text-emerald-900 mb-2"><i class="fa-solid fa-train mr-1"></i>交通費（この日）</div>
-          <div class="flex gap-2"><input id="day-transport-cost" type="number" inputmode="numeric" min="0" step="1" placeholder="交通費の合計 ¥" class="min-w-0 flex-1 rounded-lg border border-emerald-200 bg-white px-3 py-2 text-sm"><button onclick="saveDayTransportCost()" class="shrink-0 rounded-lg bg-[#315f60] px-3 py-2 text-xs font-bold text-white">保存</button></div>
-          <p class="text-[10px] text-emerald-800 mt-1">スポットとは別に記録し、日別・全体の支出に加算します。</p>
-        </div>
+
 
         <!-- タイムライン表示コンテナ -->
         <div id="timeline-view" class="space-y-3">
@@ -580,11 +588,11 @@
   <div id="toast-container" class="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-5 sm:w-80 z-[9999] flex flex-col gap-2 pointer-events-none"></div>
 
   <!-- Bottom navigation -->
-  <nav id="bottom-nav" class="shrink-0 z-40 bg-white border-t border-slate-200 px-2 py-1.5 flex items-center justify-around shadow-[0_-4px_16px_rgba(0,0,0,.05)]">
-    <button onclick="selectDayTab(appState.days.length?0:'top')" class="flex flex-col items-center gap-0.5 px-3 py-1 text-xs text-[#315f60]"><i class="fa-solid fa-book-open text-lg"></i><span>しおり</span></button>
-    <button onclick="selectDayTab('top')" class="flex flex-col items-center gap-0.5 px-3 py-1 text-xs text-slate-600"><i class="fa-solid fa-house text-lg"></i><span>HOME</span></button>
-    <button onclick="switchMobileView('map')" class="flex flex-col items-center gap-0.5 px-3 py-1 text-xs text-slate-600"><i class="fa-solid fa-map text-lg"></i><span>地図</span></button>
-    <button onclick="openBudgetTableModal()" class="flex flex-col items-center gap-0.5 px-3 py-1 text-xs text-slate-600"><i class="fa-solid fa-wallet text-lg"></i><span>予算</span></button>
+  <nav id="bottom-nav" class="shrink-0 z-40 flex items-center justify-around">
+    <button id="nav-home" onclick="selectDayTab('top')" aria-label="HOME" class="nav-item"><i class="fa-solid fa-house"></i><span>HOME</span></button>
+    <button id="nav-book" onclick="selectDayTab(appState.days.length?0:'top')" aria-label="しおり" class="nav-item"><i class="fa-solid fa-book-open"></i><span>しおり</span></button>
+    <button id="nav-map" onclick="switchMobileView('map')" aria-label="地図" class="nav-item"><i class="fa-solid fa-map-location-dot"></i><span>地図</span></button>
+    <button id="nav-budget" onclick="openBudgetTableModal()" aria-label="予算" class="nav-item"><i class="fa-solid fa-wallet"></i><span>予算</span></button>
   </nav>
 
   <!-- ==================== JavaScript アプリケーションロジック ==================== -->
@@ -622,6 +630,7 @@
     let tempClickMarker = null;
     let selectedMapCoords = null;
     let selectedSpotId = null;
+    let mobileViewMode = 'plan';
     appState.tripTitle = appState.tripTitle || '旅行のしおり';
     appState.notifications = appState.notifications || { enabled:false, minutes:15, sent:[] };
     if (!appState.hasSeenTopDashboard) { appState.currentDayIndex='top'; appState.hasSeenTopDashboard=true; saveState(); }
@@ -629,6 +638,7 @@
     appState.flights = appState.flights || { outbound:'', outboundTime:'', returning:'', returnTime:'', outboundBuffer:60, returnBuffer:90 };
     appState.packingItems = appState.packingItems || ['財布','スマホ','充電器','モバイルバッテリー','身分証・保険証','常備薬','着替え','洗面用具'];
     appState.packingChecked = appState.packingChecked || {}; appState.actualExpenses = appState.actualExpenses || []; appState.tripMemo = appState.tripMemo || ''; 
+    let migratedTransport=false; appState.days.forEach((day,index)=>{const amount=Number(day.transportActual)||0;if(amount>0){appState.actualExpenses.push({id:`legacy-transport-${Date.now()}-${index}`,amount,note:'交通費（旧入力から移行）',category:'transport',date:day.date||new Date().toLocaleDateString('sv-SE'),dayIndex:index});day.transportActual=0;migratedTransport=true;}}); if(migratedTransport)saveState();
 
     // ==================== 状態管理 (LocalStorage) ====================
     function loadState() {
@@ -662,6 +672,7 @@
     window.addEventListener('DOMContentLoaded', () => {
       initMap();
       renderAll();
+      setInterval(refreshCurrentTimeHighlight,60000);
       updateConnectivityStatus();
       registerTabiFlowPWA();
       const weatherLast = Number(localStorage.getItem('tabiflow_weather_updated_at')||0);
@@ -675,6 +686,7 @@
 
     function renderAll() {
       renderBudgetSummary();
+      updateBottomNavActive();
       renderFlightSummary();
       renderDayTabs();
       renderNextUp();
@@ -684,7 +696,6 @@
       document.getElementById('day-subnav').classList.toggle('hidden', isTop);
       document.getElementById('budget-summary-card').classList.toggle('hidden', !isTop);
       document.getElementById('daily-budget-card').classList.toggle('hidden', isTop || appState.currentDayIndex === 'sns');
-      document.getElementById('day-transport-expense')?.classList.toggle('hidden',isTop||appState.currentDayIndex==='sns');
       if (isTop) { renderTopDashboard(); document.getElementById('timeline-view').classList.add('hidden'); document.getElementById('sns-stock-view').classList.add('hidden'); return; }
       if (appState.currentDayIndex !== 'sns') renderDailyBudget();
       if (appState.currentDayIndex === 'sns') {
@@ -700,11 +711,11 @@
     }
 
     // ==================== 1. Leaflet 地図初期化＆操作 ====================
+    function showMapLoadError(){const mapEl=document.getElementById('map');if(mapEl)mapEl.innerHTML='<div class="h-full flex items-center justify-center p-6 text-center text-sm text-slate-600">地図ライブラリを読み込めませんでした。通信状況を確認し、再読み込みしてください。別の配信元も試しました。</div>'; }
     function initMap() {
       if (!window.L) {
-        const mapEl = document.getElementById('map');
-        if (mapEl) mapEl.innerHTML = '<div class="h-full flex items-center justify-center p-6 text-center text-sm text-slate-600">地図ライブラリを読み込めませんでした。通信を確認して再読み込みしてください。予定・予算は引き続き利用できます。</div>';
-        return;
+        if (!window.__tabiflowLeafletFallbackTried) { window.__tabiflowLeafletFallbackTried=true; const css=document.createElement('link');css.rel='stylesheet';css.href='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css';document.head.appendChild(css);const script=document.createElement('script');script.src='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js';script.onload=()=>initMap();script.onerror=()=>showMapLoadError();document.head.appendChild(script);return; }
+        showMapLoadError(); return;
       }
       map = L.map('map', {
         zoomControl: true
@@ -927,12 +938,12 @@
       const spotActual = day ? day.spots.reduce((sum, spot) => sum + getSpotActualAmount(spot), 0) : 0;
       const extraActual = (appState.actualExpenses || []).filter(e => e.dayIndex !== null && e.dayIndex !== undefined && e.dayIndex !== '' && Number(e.dayIndex) === Number(dayIndex))
         .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
-      return spotActual + extraActual + (Number(day?.transportActual)||0);
+      return spotActual + extraActual;
     }
     function getTotalActualAmount() {
       const spotActual = appState.days.reduce((sum, day) => sum + day.spots.reduce((n, spot) => n + getSpotActualAmount(spot), 0), 0);
       const extraActual = (appState.actualExpenses || []).reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
-      return spotActual + extraActual + appState.days.reduce((sum,d)=>sum+(Number(d.transportActual)||0),0);
+      return spotActual + extraActual;
     }
 
     // ==================== 3. 予算管理リアルタイム集計 ====================
@@ -1072,8 +1083,7 @@
     function renderBudgetTableIfOpen(){const modal=document.getElementById('budget-table-modal');if(modal&&!modal.classList.contains('hidden'))renderBudgetTable();}
     function saveTripMemo(value){appState.tripMemo=value;saveState();}
 
-    function renderDailyBudget() { const dayIndex=Number(appState.currentDayIndex);const d=appState.days[dayIndex];if(!d)return;const planned=d.spots.reduce((n,s)=>n+(Number(s.cost)||0),0),actual=getActualAmountForDay(dayIndex),remaining=planned-actual;const transportCard=document.getElementById('day-transport-expense');if(transportCard){transportCard.classList.remove('hidden');document.getElementById('day-transport-cost').value=d.transportActual??'';}const pct=planned?Math.min(100,actual/planned*100):0;document.getElementById('daily-budget-amount').textContent=`予定 ¥${planned.toLocaleString()} · 使った金額 ¥${actual.toLocaleString()}`;document.getElementById('daily-budget-bar').style.width=`${pct}%`;document.getElementById('daily-budget-paid').textContent=`使った金額 ¥${actual.toLocaleString()}`;document.getElementById('daily-budget-remaining').textContent=`予定との差 ¥${remaining.toLocaleString()}`; }
-    function saveDayTransportCost(){const day=appState.days[Number(appState.currentDayIndex)];const input=document.getElementById('day-transport-cost');if(!day||!input)return;const v=input.value.trim();if(v!==''&&(!Number.isFinite(Number(v))||Number(v)<0)){showToast('0円以上で入力してください','warning');return;}day.transportActual=v===''?0:Math.round(Number(v));saveState();renderBudgetSummary();renderHomeTools();renderDailyBudget();renderBudgetTableIfOpen();showToast('交通費を保存しました','success');}
+    function renderDailyBudget() { const dayIndex=Number(appState.currentDayIndex);const d=appState.days[dayIndex];if(!d)return;const planned=d.spots.reduce((n,s)=>n+(Number(s.cost)||0),0),actual=getActualAmountForDay(dayIndex),remaining=planned-actual;const pct=planned?Math.min(100,actual/planned*100):0;document.getElementById('daily-budget-amount').textContent=`予定 ¥${planned.toLocaleString()} · 使った金額 ¥${actual.toLocaleString()}`;document.getElementById('daily-budget-bar').style.width=`${pct}%`;document.getElementById('daily-budget-paid').textContent=`使った金額 ¥${actual.toLocaleString()}`;document.getElementById('daily-budget-remaining').textContent=`予定との差 ¥${remaining.toLocaleString()}`; }
     function renderScheduleAlerts() {
       const box = document.getElementById('schedule-alerts');
       if (!box) return;
@@ -1173,6 +1183,7 @@
       container.innerHTML = sortedSpots.map((spot, idx) => {
         const meta = CATEGORY_META[spot.category] || CATEGORY_META.other;
         const isSelected = selectedSpotId === spot.id;
+        const now = new Date(), todayStr = now.toLocaleDateString('sv-SE'), isToday = !currentDay.date || currentDay.date === todayStr, nowMin = now.getHours()*60+now.getMinutes(), startMin = timeToMinutes(spot.time), endMin = startMin + Math.max(1,Number(spot.duration)||60), isCurrentTime = isToday && nowMin >= startMin && nowMin < endMin;
         const weatherHtml = spot.weather && !spot.weather.unavailable && (!spot.weather.date || spot.weather.date === currentDay.date)
           ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-sky-50 text-sky-700 border border-sky-200" title="${spot.weather.date ? '旅行日の予報' : '保存済み天気情報'}">
                ${spot.weather.icon} ${Number.isFinite(Number(spot.weather.low)) && Number.isFinite(Number(spot.weather.high)) ? `${spot.weather.low}〜${spot.weather.high}°C` : `${spot.weather.temp}°C`}${Number.isFinite(Number(spot.weather.rainProbability)) ? ` · ☂${Math.round(spot.weather.rainProbability)}%` : ''}
@@ -1193,8 +1204,8 @@
           }
         }
         return `${transferHtml}
-          <div id="spot-card-${spot.id}"
-               class="timeline-item relative pl-11 group">
+          <div id="spot-card-${spot.id}" data-start-min="${startMin}" data-duration-min="${Math.max(1,Number(spot.duration)||60)}" data-day-date="${escapeHtml(currentDay.date||'')}"
+               class="timeline-item relative pl-11 group ${isCurrentTime ? 'current-time-card' : ''}">
             <div class="timeline-line"></div>
 
             <!-- カテゴリアイコン -->
@@ -1212,7 +1223,7 @@
                 <div class="flex items-center gap-2 flex-wrap">
                   <span class="font-bold text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">
                     ${escapeHtml(spot.time)} · ${Number(spot.duration ?? 60)}分
-                  </span>
+                  </span><span class="current-time-label hidden text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-[#315f60] text-white">現在の予定</span>
                   <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md ${meta.badgeClass}">
                     <i class="fa-solid ${meta.icon} mr-1"></i>${meta.label}
                   </span>
@@ -1553,6 +1564,7 @@
 
     function openBudgetTableModal() {
       renderBudgetTable();
+      updateBottomNavActive(true);
       const modal = document.getElementById('budget-table-modal');
       modal.classList.remove('hidden');
       modal.classList.add('flex');
@@ -1564,6 +1576,7 @@
       modal.classList.add('hidden');
       modal.classList.remove('flex');
       const routeBtn=document.getElementById('map-fit-route'); if(routeBtn && !document.getElementById('right-panel').classList.contains('hidden')) routeBtn.classList.remove('hidden');
+      updateBottomNavActive();
     }
 
     function renderBudgetTable() {
@@ -1575,7 +1588,6 @@
       const actualTotal = getTotalActualAmount();
       const unassignedActual = (appState.actualExpenses || []).filter(e => e.dayIndex === null || e.dayIndex === undefined || e.dayIndex === '').reduce((sum,e)=>sum+(Number(e.amount)||0),0);
       appState.days.forEach((day, dayIndex) => {
-        if(Number(day.transportActual)>0) rows.push({day:day.label||`${dayIndex+1}日目`,name:'交通費（まとめ入力）',categoryName:'交通',budget:null,added:Number(day.transportActual),date:day.date||'',type:'extra'});
         day.spots.forEach(spot => {
           const cost = Number(spot.cost) || 0;
           const actualCost = spot.actualCost == null || spot.actualCost === '' ? null : getSpotActualAmount(spot);
@@ -1608,7 +1620,6 @@
       }).join('') + `<div class="rounded-lg bg-slate-100 p-2.5"><div class="flex justify-between text-xs font-bold"><span>合計</span><span>予定 ${yen(planned)} · 使った金額 ${yen(actualTotal)}</span></div><div class="text-[10px] mt-1 ${planned - actualTotal < 0 ? 'text-rose-600' : 'text-slate-500'}">予定との差 ${yen(planned - actualTotal)}</div></div>`;
       const actualCategoryTotals = {};
       appState.days.forEach(day=>day.spots.forEach(spot=>{const key=CATEGORY_META[spot.category]?spot.category:'other';actualCategoryTotals[key]=(actualCategoryTotals[key]||0)+getSpotActualAmount(spot);}));
-      appState.days.forEach(day=>{if(Number(day.transportActual)>0)actualCategoryTotals.transport=(actualCategoryTotals.transport||0)+Number(day.transportActual);});
       (appState.actualExpenses||[]).forEach(expense=>{const key=CATEGORY_META[expense.category]?expense.category:'other';actualCategoryTotals[key]=(actualCategoryTotals[key]||0)+(Number(expense.amount)||0);});
       const categoryKeys = [...new Set([...Object.keys(categoryTotals),...Object.keys(actualCategoryTotals)])];
       const categoryHtml = categoryKeys.filter(key=>(categoryTotals[key]||0)>0||(actualCategoryTotals[key]||0)>0).map(key => `
@@ -1752,7 +1763,14 @@
     }
 
     // ==================== 9. モバイル表示切替 & ユーティリティ ====================
+    function updateBottomNavActive(budgetOpen=false) {
+      const modal=document.getElementById('budget-table-modal'), isBudget=budgetOpen||(modal&&!modal.classList.contains('hidden'));
+      const isMap=mobileViewMode==='map'&&!isBudget, isHome=appState.currentDayIndex==='top'&&!isMap&&!isBudget, isBook=!isMap&&!isHome&&!isBudget;
+      [['nav-home',isHome],['nav-book',isBook],['nav-map',isMap],['nav-budget',isBudget]].forEach(([id,on])=>{const el=document.getElementById(id);if(el){el.dataset.active=on?'true':'false';el.setAttribute('aria-current',on?'page':'false');}});
+    }
+    function refreshCurrentTimeHighlight(){const now=new Date(),today=now.toLocaleDateString('sv-SE'),minutes=now.getHours()*60+now.getMinutes();document.querySelectorAll('#itinerary-list .timeline-item[data-start-min]').forEach(card=>{const date=card.dataset.dayDate||'',validDay=!date||date===today,start=Number(card.dataset.startMin)||0,end=start+(Number(card.dataset.durationMin)||60),active=validDay&&minutes>=start&&minutes<end;card.classList.toggle('current-time-card',active);const badge=card.querySelector('.current-time-label');if(badge)badge.classList.toggle('hidden',!active);});}
     function switchMobileView(view) {
+      mobileViewMode=view; updateBottomNavActive();
       const leftPanel = document.getElementById('left-panel');
       const rightPanel = document.getElementById('right-panel');
       if (view === 'plan') {
