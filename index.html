@@ -1,0 +1,1555 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TabiFlow - 完全無料構成 旅のしおり＆予算管理プロトタイプ</title>
+
+  <!-- Google Fonts: Inter & Noto Sans JP -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Inter"', '"Noto Sans JP"', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#eff6ff',
+              100: '#dbeafe',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+            }
+          }
+        }
+      }
+    };
+  </script>
+
+  <!-- Leaflet.js CSS & JS (完全無料・APIキー不要の地図ライブラリ) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+
+  <!-- FontAwesome for Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
+  <style>
+    /* カスタムスクロールバーと微調整 */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+
+    /* Leaflet カスタム番号付きマーカー */
+    .custom-pin {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      border-radius: 9999px;
+      color: #ffffff;
+      font-weight: 700;
+      font-size: 13px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.28);
+      border: 2.5px solid #ffffff;
+      transition: transform 0.2s ease;
+    }
+    .custom-pin:hover {
+      transform: scale(1.15);
+    }
+    .pin-sightseeing { background-color: #2563eb; }
+    .pin-food { background-color: #f97316; }
+    .pin-transport { background-color: #10b981; }
+    .pin-hotel { background-color: #8b5cf6; }
+    .pin-other { background-color: #64748b; }
+
+    /* タイムライン縦線 */
+    .timeline-line::before {
+      content: '';
+      position: absolute;
+      top: 28px;
+      bottom: -16px;
+      left: 19px;
+      width: 2px;
+      background-color: #e2e8f0;
+      z-index: 0;
+    }
+    .timeline-item:last-child .timeline-line::before {
+      display: none;
+    }
+
+    /* トースト通知アニメーション */
+    @keyframes slideInRight {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    .toast-enter {
+      animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    /* ===== TabiFlow visual refresh ===== */
+    :root { color-scheme: light; }
+    body { background: #f5f7fb; letter-spacing: .005em; }
+    header {
+      min-height: 66px;
+      padding-left: clamp(16px, 2.5vw, 34px) !important;
+      padding-right: clamp(16px, 2.5vw, 34px) !important;
+      box-shadow: 0 1px 0 rgba(15,23,42,.04), 0 8px 24px rgba(15,23,42,.035) !important;
+    }
+    header h1 { font-size: 19px !important; letter-spacing: -.04em !important; }
+    header .w-9 { width: 40px !important; height: 40px !important; border-radius: 14px !important; }
+    #left-panel { background: #fbfcff !important; }
+    #left-panel > .bg-gradient-to-br {
+      margin: 14px 14px 0;
+      border-radius: 20px;
+      padding: 18px !important;
+      box-shadow: 0 12px 28px rgba(15,23,42,.13);
+    }
+    #left-panel > .bg-gradient-to-br .text-sm,
+    #left-panel > .bg-gradient-to-br .sm\:text-base { letter-spacing: -.025em; }
+    #day-tabs-container button { border-radius: 999px !important; padding: 8px 14px !important; }
+    #panel-scroll-area { padding: 18px !important; }
+    #itinerary-list { gap: 14px !important; }
+    .timeline-item { padding-left: 48px !important; }
+    .timeline-line::before { left: 21px !important; background: linear-gradient(#cbd5e1, #e8edf5) !important; }
+    .timeline-item > .absolute.left-1\.5 {
+      left: 7px !important; width: 30px !important; height: 30px !important;
+      box-shadow: 0 0 0 5px #fbfcff, 0 4px 10px rgba(15,23,42,.12);
+    }
+    .timeline-item > div.rounded-2xl {
+      border-radius: 18px !important;
+      padding: 15px !important;
+      box-shadow: 0 3px 12px rgba(15,23,42,.035);
+    }
+    .timeline-item > div.rounded-2xl:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 24px rgba(37,99,235,.08);
+    }
+    #right-panel { background: #e8edf4 !important; }
+    #map { font-family: Inter, "Noto Sans JP", sans-serif; }
+    .leaflet-popup-content-wrapper { border-radius: 14px !important; box-shadow: 0 10px 30px rgba(15,23,42,.16) !important; }
+    .leaflet-popup-content { margin: 13px 15px !important; }
+    button { -webkit-tap-highlight-color: transparent; }
+    button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+      outline: 3px solid rgba(59,130,246,.28) !important; outline-offset: 2px;
+    }
+    #spot-modal > div, #budget-modal > div, #reset-modal > div {
+      border-radius: 22px !important;
+      box-shadow: 0 24px 70px rgba(15,23,42,.24) !important;
+    }
+    #spot-form input, #spot-form select, #spot-form textarea,
+    #budget-modal input, #sns-url-input {
+      border-radius: 12px !important;
+    }
+    #sns-stock-view > .bg-indigo-50 { border-radius: 18px !important; padding: 16px !important; }
+    #sns-stock-list > div { border-radius: 18px !important; box-shadow: 0 4px 16px rgba(15,23,42,.045); }
+    #toast-container > div { backdrop-filter: blur(12px); }
+    @media (min-width: 1024px) {
+      #left-panel { width: 480px !important; }
+      #panel-scroll-area { padding: 20px !important; }
+    }
+    @media (max-width: 640px) {
+      header { min-height: 58px; }
+      #left-panel > .bg-gradient-to-br { margin: 10px 10px 0; padding: 14px !important; }
+      #panel-scroll-area { padding: 13px !important; }
+      .timeline-item > div.rounded-2xl { padding: 13px !important; }
+    }
+
+
+
+    /* ===== Reference-inspired calm travel-guide theme ===== */
+    :root { color-scheme: light; --guide-cream:#f6f5ef; --guide-white:#fffefa; --guide-navy:#142d36; --guide-teal:#315f60; --guide-mint:#e6efea; --guide-gold:#bd9258; }
+    body { background:var(--guide-cream) !important; color:#20383d !important; }
+    header { background:var(--guide-white) !important; color:#20383d !important; }
+    #left-panel { background:var(--guide-cream) !important; }
+    #right-panel { background:#e9eeea !important; }
+    #left-panel .bg-white, #left-panel .bg-slate-50, #spot-modal .bg-white, #budget-modal .bg-white,
+    #reset-modal .bg-white { color:#20383d !important; }
+    #left-panel .text-slate-900, #left-panel .text-slate-800, #left-panel .text-slate-700,
+    #spot-modal .text-slate-900, #spot-modal .text-slate-800, #spot-modal .text-slate-700 { color:#20383d !important; }
+    #left-panel .text-slate-600, #left-panel .text-slate-500, #left-panel .text-slate-400 { color:#718083 !important; }
+    #spot-modal input, #spot-modal select, #spot-modal textarea, #budget-modal input, #sns-url-input {
+      background:#fffefa !important; color:#20383d !important; border-color:#d9e0d9 !important;
+    }
+    #spot-modal input::placeholder, #spot-modal textarea::placeholder, #sns-url-input::placeholder { color:#8a9691 !important; opacity:1; }
+    #left-panel .bg-gradient-to-br { background:linear-gradient(130deg,#142d36 0%,#315f60 100%) !important; color:#fff !important; }
+    #left-panel .bg-gradient-to-br .text-white { color:#fff !important; }
+    #left-panel .bg-gradient-to-br .text-slate-300, #left-panel .bg-gradient-to-br .text-slate-400 { color:#d5e4dc !important; }
+    #day-tabs-container button { border-radius:999px !important; }
+    #itinerary-list > div, #sns-stock-list > div { border-radius:15px !important; }
+    #map { background:#e9eeea !important; }
+    button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline:3px solid #9bbdb1 !important; outline-offset:2px; }
+    @media(max-width:640px) { #panel-scroll-area { padding:13px !important; } }
+\n  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased h-screen flex flex-col overflow-hidden">
+
+  <!-- ==================== トップヘッダー ==================== -->
+  <header class="bg-white border-b border-slate-200 px-4 py-2.5 flex items-center justify-between shrink-0 z-30 shadow-xs">
+    <div class="flex items-center gap-2.5">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-sm">
+        <i class="fa-solid fa-route text-base"></i>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="font-bold text-base sm:text-lg tracking-tight text-slate-900">TabiFlow</h1>
+          <span class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+            完全無料スタック (OSM + Open-Meteo)
+          </span>
+        </div>
+        <p class="text-[11px] text-slate-500 hidden md:block">札幌・小樽 1泊2日 グルメ＆絶景モデルコース</p>
+      </div>
+    </div>
+
+    <!-- アクションボタン群 -->
+    <div class="flex items-center gap-2">
+      <!-- 出発リマインダー通知テストボタン -->
+      <button onclick="triggerNotificationTest()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 transition cursor-pointer" title="次の予定の15分前通知をテストします">
+        <i class="fa-solid fa-bell animate-pulse"></i>
+        <span class="hidden sm:inline">出発通知テスト</span>
+        <span class="sm:hidden">通知テスト</span>
+      </button>
+
+      <!-- 初期データリセットボタン -->
+      <button onclick="openResetModal()" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-600 transition cursor-pointer" title="初期サンプルデータに戻す">
+        <i class="fa-solid fa-rotate-left"></i>
+        <span class="hidden md:inline">リセット</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ==================== モバイル用表示切替タブ ==================== -->
+  <div class="lg:hidden bg-white border-b border-slate-200 px-3 py-1.5 flex gap-2 shrink-0 z-20">
+    <button id="mobile-tab-plan" onclick="switchMobileView('plan')" class="flex-1 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 text-white shadow-xs transition">
+      <i class="fa-solid fa-list-check mr-1"></i>しおり・予算
+    </button>
+    <button id="mobile-tab-map" onclick="switchMobileView('map')" class="flex-1 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition">
+      <i class="fa-solid fa-map-location-dot mr-1"></i>地図ビュー
+    </button>
+  </div>
+
+  <!-- ==================== メイン2ペインコンテンツ ==================== -->
+  <main class="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
+
+    <!-- 左ペイン: 旅のしおり & 予算管理 & SNSストック -->
+    <section id="left-panel" class="w-full lg:w-[460px] xl:w-[500px] h-full bg-white border-r border-slate-200 flex flex-col shrink-0 z-10 overflow-hidden">
+
+      <!-- 1. 予算管理サマリーカード -->
+      <div class="p-3.5 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white shrink-0">
+        <div class="flex items-center justify-between mb-2">
+          <div class="flex items-center gap-1.5 text-xs font-medium text-slate-300">
+            <i class="fa-solid fa-wallet text-emerald-400"></i>
+            <span>旅のリアルタイム予算管理</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button onclick="openBudgetTableModal()" class="text-[11px] bg-emerald-500/20 hover:bg-emerald-500/30 px-2.5 py-1 rounded-lg text-emerald-100 transition cursor-pointer">
+              <i class="fa-solid fa-table-list mr-1"></i>予算表を見る
+            </button>
+            <button onclick="openBudgetEditModal()" class="text-[11px] bg-white/10 hover:bg-white/20 px-2.5 py-1 rounded-lg text-slate-200 transition cursor-pointer">
+              <i class="fa-solid fa-pen mr-1"></i>総予算を変更
+            </button>
+          </div>
+        </div>
+
+        <!-- 金額表示グリッド -->
+        <div class="grid grid-cols-3 gap-2 mb-2.5">
+          <div class="bg-white/5 rounded-xl p-2 border border-white/10">
+            <div class="text-[10px] text-slate-400">総予算</div>
+            <div id="budget-total-display" class="text-sm sm:text-base font-bold text-white">¥50,000</div>
+          </div>
+          <div class="bg-white/5 rounded-xl p-2 border border-white/10">
+            <div class="text-[10px] text-slate-400">支払済 / 予定計</div>
+            <div class="flex items-baseline gap-1">
+              <span id="budget-paid-display" class="text-sm sm:text-base font-bold text-amber-400">¥0</span>
+              <span id="budget-planned-display" class="text-[10px] text-slate-400">/ ¥0</span>
+            </div>
+          </div>
+          <div class="bg-white/5 rounded-xl p-2 border border-white/10">
+            <div class="text-[10px] text-slate-400">残り予算</div>
+            <div id="budget-remaining-display" class="text-sm sm:text-base font-bold text-emerald-400">¥50,000</div>
+          </div>
+        </div>
+
+        <!-- プログレスバー -->
+        <div class="w-full bg-slate-700 h-2 rounded-full overflow-hidden mb-2">
+          <div id="budget-progress-bar" class="bg-emerald-400 h-full rounded-full transition-all duration-300" style="width: 0%"></div>
+        </div>
+
+        <!-- カテゴリ別内訳バッジ -->
+        <div id="category-breakdown" class="flex flex-wrap gap-1.5 text-[10px] text-slate-300">
+          <!-- JSで動的描画 -->
+        </div>
+      </div>
+
+      <!-- 2. サブナビゲーション (日程タブ + SNSストックタブ) -->
+      <div class="px-3.5 pt-2.5 pb-2 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-2 shrink-0">
+        <div id="day-tabs-container" class="flex items-center gap-1.5 overflow-x-auto pb-0.5">
+          <!-- Day 1 / Day 2 / SNSストック タブがJSで描画される -->
+        </div>
+        <button onclick="addNewDay()" class="shrink-0 text-xs font-medium text-blue-600 hover:bg-blue-50 px-2 py-1 rounded-lg transition cursor-pointer" title="日程を追加">
+          <i class="fa-solid fa-plus"></i> 日程
+        </button>
+      </div>
+
+      <!-- 3. コンテンツエリア（タイムライン または SNSストック） -->
+      <div id="panel-scroll-area" class="flex-1 overflow-y-auto p-3.5 space-y-3">
+
+        <!-- タイムライン表示コンテナ -->
+        <div id="timeline-view" class="space-y-3">
+          <!-- 天気APIステータスバー -->
+          <div class="flex items-center justify-between bg-sky-50 border border-sky-100 rounded-xl px-3 py-2 text-xs text-sky-800">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-cloud-sun text-sky-500 text-sm"></i>
+              <span id="weather-status-text">Open-Meteo APIで各地点のピンポイント天気を同期中...</span>
+            </div>
+            <button onclick="refreshAllWeather()" class="text-sky-600 hover:text-sky-800 font-medium underline cursor-pointer shrink-0 ml-2">
+              更新
+            </button>
+          </div>
+
+          <!-- スポットタイムラインリスト -->
+          <div id="itinerary-list" class="space-y-3 pb-4">
+            <!-- JSでカードを描画 -->
+          </div>
+
+          <!-- 予定追加ボタン -->
+          <button onclick="openAddModal()" class="w-full py-3 rounded-xl border-2 border-dashed border-slate-300 hover:border-blue-500 hover:bg-blue-50/50 text-slate-600 hover:text-blue-600 font-semibold text-sm flex items-center justify-center gap-2 transition cursor-pointer">
+            <i class="fa-solid fa-circle-plus"></i>
+            <span>この日に新しい予定を追加</span>
+          </button>
+        </div>
+
+        <!-- SNSストック（行きたい場所候補）コンテナ -->
+        <div id="sns-stock-view" class="hidden space-y-3">
+          <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-3">
+            <h3 class="text-xs font-bold text-indigo-900 mb-1 flex items-center gap-1.5">
+              <i class="fa-brands fa-instagram text-pink-600"></i>
+              <span>SNS・Webから行きたい場所をストック</span>
+            </h3>
+            <p class="text-[11px] text-indigo-700 mb-2.5">
+              InstagramやX、ブログのURLを貼り付けると候補リストに保存し、ワンクリックでしおりへ組み込めます。
+            </p>
+            <form onsubmit="handleAddSnsStock(event)" class="flex gap-1.5">
+              <input type="text" id="sns-url-input" placeholder="例: https://instagram.com/p/otaru-canal..." required
+                class="flex-1 text-xs px-3 py-2 rounded-lg border border-indigo-200 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+              <button type="submit" class="px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shrink-0 transition cursor-pointer">
+                保存
+              </button>
+            </form>
+          </div>
+
+          <div id="sns-stock-list" class="space-y-2.5">
+            <!-- JSでSNSストックリストを描画 -->
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- 右ペイン: 全画面インタラクティブ地図 (Leaflet + OpenStreetMap) -->
+    <section id="right-panel" class="hidden lg:block flex-1 h-full relative bg-slate-200">
+      <div id="map" class="w-full h-full z-0"></div>
+
+      <!-- 地図上のフローティング操作ガイド -->
+      <div class="absolute top-3 right-3 z-[400] bg-white/95 backdrop-blur-xs border border-slate-200 rounded-xl shadow-md px-3.5 py-2.5 max-w-xs text-xs">
+        <div class="font-bold text-slate-800 flex items-center gap-1.5 mb-1">
+          <i class="fa-solid fa-location-crosshairs text-blue-600"></i>
+          <span>インタラクティブ地図ガイド</span>
+        </div>
+        <ul class="text-[11px] text-slate-600 space-y-1">
+          <li>• 番号ピンをクリックでしおり項目と連動</li>
+          <li>• <span class="font-semibold text-blue-600">地図上の任意の場所をクリック</span>すると座標を取得してそのまま予定追加できます</li>
+        </ul>
+      </div>
+
+      <!-- ルート全体表示ボタン -->
+      <button onclick="fitMapToCurrentDay()" class="absolute bottom-6 right-3 z-[400] bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 shadow-md rounded-xl px-3.5 py-2 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer">
+        <i class="fa-solid fa-expand text-blue-600"></i>
+        <span>今日のルート全体を表示</span>
+      </button>
+    </section>
+
+  </main>
+
+  <!-- ==================== モーダル1: 予定追加・編集モーダル ==================== -->
+  <div id="spot-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden border border-slate-200">
+      <div class="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+        <h3 id="spot-modal-title" class="font-bold text-sm text-slate-800">新しい予定を追加</h3>
+        <button onclick="closeSpotModal()" class="text-slate-400 hover:text-slate-600 p-1 cursor-pointer">
+          <i class="fa-solid fa-xmark text-base"></i>
+        </button>
+      </div>
+
+      <form id="spot-form" onsubmit="handleSaveSpot(event)" class="p-4 space-y-3 text-xs">
+        <input type="hidden" id="edit-spot-id" />
+
+        <div class="grid grid-cols-3 gap-2.5">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">時刻 *</label>
+            <input type="time" id="spot-time" required value="12:00"
+              class="w-full px-2.5 py-2 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+          <div class="col-span-2">
+            <label class="block font-semibold text-slate-700 mb-1">スポット名 *</label>
+            <input type="text" id="spot-name" required placeholder="例: 小樽運河"
+              class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2.5">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">カテゴリ</label>
+            <select id="spot-category" class="w-full px-2.5 py-2 rounded-xl border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="sightseeing">観光</option>
+              <option value="food">グルメ・食費</option>
+              <option value="transport">移動・交通</option>
+              <option value="hotel">宿泊</option>
+              <option value="other">その他</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">予算 / 金額 (円)</label>
+            <input type="number" id="spot-cost" min="0" step="100" value="1500" required
+              class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+        </div>
+
+        <!-- 地図位置はスポット名から自動検索。座標入力は不要 -->
+        <div class="bg-emerald-50 p-3 rounded-xl border border-emerald-100">
+          <div class="text-xs font-semibold text-emerald-900">📍 場所は名前を入力するだけ</div>
+          <p class="text-[11px] text-emerald-800 mt-1">施設名や駅名から地図上の位置を自動で探します。緯度・経度の入力は不要です。</p>
+          <input type="hidden" id="spot-lat" />
+          <input type="hidden" id="spot-lng" />
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">メモ・持ち物・予約番号など</label>
+          <textarea id="spot-memo" rows="2" placeholder="例: 海鮮丼ランチ。整理券を先に取る。"
+            class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+          <button type="button" onclick="closeSpotModal()" class="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold cursor-pointer">
+            キャンセル
+          </button>
+          <button type="submit" class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-xs cursor-pointer">
+            保存する
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==================== モーダル2: 総予算編集モーダル ==================== -->
+  <div id="budget-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-xs overflow-hidden border border-slate-200">
+      <div class="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+        <h3 class="font-bold text-sm text-slate-800">旅行の総予算を設定</h3>
+        <button onclick="closeBudgetModal()" class="text-slate-400 hover:text-slate-600 p-1 cursor-pointer">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <form onsubmit="handleSaveTotalBudget(event)" class="p-4 space-y-3 text-xs">
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">総予算額 (円)</label>
+          <input type="number" id="total-budget-input" min="0" step="1000" required
+            class="w-full px-3 py-2 text-base font-bold rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        </div>
+        <div class="flex justify-end gap-2 pt-1">
+          <button type="button" onclick="closeBudgetModal()" class="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 font-semibold cursor-pointer">閉じる</button>
+          <button type="submit" class="px-4 py-1.5 rounded-xl bg-blue-600 text-white font-semibold cursor-pointer">更新</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==================== 予算表モーダル ==================== -->
+  <div id="budget-table-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] hidden items-center justify-center p-3 sm:p-5">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden border border-slate-200 flex flex-col">
+      <div class="px-4 sm:px-5 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between shrink-0">
+        <div>
+          <h3 class="font-bold text-base text-slate-800"><i class="fa-solid fa-table-list text-emerald-600 mr-2"></i>旅行の予算表</h3>
+          <p class="text-[11px] text-slate-500 mt-0.5">日程ごとの費用と支払い状況を確認できます</p>
+        </div>
+        <button onclick="closeBudgetTableModal()" class="text-slate-400 hover:text-slate-700 p-2 cursor-pointer" aria-label="閉じる"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div id="budget-table-content" class="p-4 sm:p-5 overflow-y-auto space-y-4 text-slate-800"></div>
+      <div class="px-4 py-3 border-t border-slate-200 bg-slate-50 flex justify-end shrink-0">
+        <button onclick="closeBudgetTableModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold cursor-pointer">閉じる</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== モーダル3: データリセット確認モーダル ==================== -->
+  <div id="reset-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-xs overflow-hidden border border-slate-200 p-4 text-center space-y-3">
+      <div class="w-10 h-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+      </div>
+      <h3 class="font-bold text-sm text-slate-800">初期サンプル状態に戻しますか？</h3>
+      <p class="text-xs text-slate-500">追加・編集したしおりデータと予算設定がリセットされます。</p>
+      <div class="flex justify-center gap-2 pt-1">
+        <button onclick="closeResetModal()" class="flex-1 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold cursor-pointer">キャンセル</button>
+        <button onclick="executeResetData()" class="flex-1 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-semibold cursor-pointer">リセットする</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== トースト通知コンテナ ==================== -->
+  <div id="toast-container" class="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-5 sm:w-80 z-[9999] flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- ==================== JavaScript アプリケーションロジック ==================== -->
+  <script>
+    /**
+     * 初期サンプルデータ（札幌・小樽 1泊2日モデルコース）
+     */
+    const DEFAULT_STATE = {
+      totalBudget: 45000,
+      currentDayIndex: 0, // 0: Day 1, 1: Day 2, ... / 'sns' でSNSストック表示
+      days: [
+        {
+          id: 'day-1',
+          label: 'Day 1 (札幌)',
+          date: '2026-11-21',
+          spots: [
+            {
+              id: 's1',
+              time: '09:30',
+              name: 'JR札幌駅 到着・コインロッカー',
+              category: 'transport',
+              lat: 43.0686,
+              lng: 141.3508,
+              cost: 1150,
+              paid: true,
+              memo: '新千歳空港から快速エアポートで37分。西口ロッカーに荷物を預ける。',
+              weather: { icon: '☀️', temp: 8, desc: '晴れ' }
+            },
+            {
+              id: 's2',
+              time: '10:30',
+              name: 'さっぽろテレビ塔＆大通公園',
+              category: 'sightseeing',
+              lat: 43.0621,
+              lng: 141.3544,
+              cost: 1000,
+              paid: true,
+              memo: '展望台から大通公園を一望。記念撮影スポット。',
+              weather: { icon: '🌤️', temp: 9, desc: '晴れ時々曇り' }
+            },
+            {
+              id: 's3',
+              time: '12:00',
+              name: '二条市場（海鮮丼ランチ）',
+              category: 'food',
+              lat: 43.0566,
+              lng: 141.3563,
+              cost: 3200,
+              paid: false,
+              memo: 'ウニ・イクラ・カニの三色丼。人気店は11:45頃に着くとスムーズ。',
+              weather: { icon: '🌤️', temp: 10, desc: '晴れ' }
+            },
+            {
+              id: 's4',
+              time: '15:00',
+              name: '白い恋人パーク',
+              category: 'sightseeing',
+              lat: 43.0884,
+              lng: 141.2713,
+              cost: 800,
+              paid: false,
+              memo: '工場見学コースと限定ソフトクリーム。地下鉄東西線で宮の沢駅下車。',
+              weather: { icon: '☁️', temp: 8, desc: '曇り' }
+            },
+            {
+              id: 's5',
+              time: '18:30',
+              name: 'すすきのジンギスカン夕食＆ホテルチェックイン',
+              category: 'hotel',
+              lat: 43.0554,
+              lng: 141.3533,
+              cost: 14500,
+              paid: false,
+              memo: 'ホテル宿泊費(11,000円)＋ジンギスカン夕食(3,500円)。',
+              weather: { icon: '🌙', temp: 4, desc: '晴れ' }
+            }
+          ]
+        },
+        {
+          id: 'day-2',
+          label: 'Day 2 (小樽)',
+          date: '2026-11-22',
+          spots: [
+            {
+              id: 's6',
+              time: '09:00',
+              name: 'JR函館本線で小樽へ移動',
+              category: 'transport',
+              lat: 43.1977,
+              lng: 140.9937,
+              cost: 750,
+              paid: false,
+              memo: '進行方向右側の窓側席に座ると銭函〜朝里間で日本海が絶景！',
+              weather: { icon: '☀️', temp: 7, desc: '快晴' }
+            },
+            {
+              id: 's7',
+              time: '10:15',
+              name: '小樽運河散策＆クルーズ',
+              category: 'sightseeing',
+              lat: 43.1994,
+              lng: 141.0017,
+              cost: 1800,
+              paid: false,
+              memo: '浅草橋街園で記念写真。デイクルーズ40分コースに乗船。',
+              weather: { icon: '☀️', temp: 8, desc: '快晴' }
+            },
+            {
+              id: 's8',
+              time: '12:30',
+              name: '小樽堺町通り（お寿司＆ルタオ本店）',
+              category: 'food',
+              lat: 43.1924,
+              lng: 141.0056,
+              cost: 4800,
+              paid: false,
+              memo: 'お寿司ランチ後、ルタオ本店2Fカフェでドゥーブルフロマージュ。',
+              weather: { icon: '🌤️', temp: 9, desc: '晴れ' }
+            },
+            {
+              id: 's9',
+              time: '15:00',
+              name: '小樽オルゴール堂 本館',
+              category: 'sightseeing',
+              lat: 43.1906,
+              lng: 141.0074,
+              cost: 2200,
+              paid: false,
+              memo: '蒸気時計の演奏（毎時00分・15分・30分・45分）をチェック。お土産購入。',
+              weather: { icon: '☁️', temp: 7, desc: '曇り' }
+            }
+          ]
+        }
+      ],
+      snsStocks: [
+        {
+          id: 'sns-1',
+          title: '三角市場 滝波食堂（小樽駅すぐの絶品わがまま丼）',
+          url: 'https://instagram.com/p/otaru-sankaku-market-sample',
+          category: 'food',
+          lat: 43.1983,
+          lng: 140.9931,
+          estimatedCost: 2800,
+          memo: 'SNSで話題の3品選べるわがまま丼。朝8時から営業。'
+        },
+        {
+          id: 'sns-2',
+          title: '藻岩山ロープウェイ（日本新三大夜景・札幌一望）',
+          url: 'https://x.com/sapporo_nightview_spot/status/123456',
+          category: 'sightseeing',
+          lat: 43.0226,
+          lng: 141.3223,
+          estimatedCost: 2100,
+          memo: '日没30分前に山頂に着くのがベスト。防寒着必須。'
+        }
+      ]
+    };
+
+    const CATEGORY_META = {
+      sightseeing: { label: '観光', badgeClass: 'bg-blue-100 text-blue-700', pinClass: 'pin-sightseeing', icon: 'fa-camera' },
+      food:        { label: '食費', badgeClass: 'bg-orange-100 text-orange-700', pinClass: 'pin-food', icon: 'fa-utensils' },
+      transport:   { label: '交通', badgeClass: 'bg-emerald-100 text-emerald-700', pinClass: 'pin-transport', icon: 'fa-train' },
+      hotel:       { label: '宿泊', badgeClass: 'bg-purple-100 text-purple-700', pinClass: 'pin-hotel', icon: 'fa-bed' },
+      other:       { label: 'その他', badgeClass: 'bg-slate-100 text-slate-700', pinClass: 'pin-other', icon: 'fa-tag' }
+    };
+
+    const STORAGE_KEY = 'tabiflow_prototype_state_v1';
+    let appState = loadState();
+    let map = null;
+    let markersLayer = null;
+    let routeLineLayer = null;
+    let tempClickMarker = null;
+    let selectedSpotId = null;
+
+    // ==================== 状態管理 (LocalStorage) ====================
+    function loadState() {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          return JSON.parse(saved);
+        }
+      } catch (e) {
+        console.warn('LocalStorage読み込み失敗:', e);
+      }
+      return JSON.parse(JSON.stringify(DEFAULT_STATE));
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+      } catch (e) {
+        console.warn('LocalStorage保存失敗:', e);
+      }
+    }
+
+    // ==================== 初期化 ====================
+    window.addEventListener('DOMContentLoaded', () => {
+      initMap();
+      renderAll();
+      refreshAllWeather();
+    });
+
+    function renderAll() {
+      renderBudgetSummary();
+      renderDayTabs();
+      if (appState.currentDayIndex === 'sns') {
+        document.getElementById('timeline-view').classList.add('hidden');
+        document.getElementById('sns-stock-view').classList.remove('hidden');
+        renderSnsStockList();
+      } else {
+        document.getElementById('timeline-view').classList.remove('hidden');
+        document.getElementById('sns-stock-view').classList.add('hidden');
+        renderItineraryList();
+        renderMapMarkersAndRoute();
+      }
+    }
+
+    // ==================== 1. Leaflet 地図初期化＆操作 ====================
+    function initMap() {
+      map = L.map('map', {
+        zoomControl: true
+      }).setView([43.0686, 141.3508], 13);
+
+      // Esri World Street Map（CARTOのAPIキー要求を回避）
+      // 公開タイルサービス。利用時はEsriの利用条件・帰属表示に従ってください。
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+        maxZoom: 19,
+        attribution: 'Tiles &copy; Esri — Sources: Esri, HERE, Garmin, OpenStreetMap contributors, and the GIS user community'
+      }).addTo(map);
+
+      markersLayer = L.layerGroup().addTo(map);
+      routeLineLayer = L.layerGroup().addTo(map);
+
+      // 地図上の任意の場所をクリックした時のイベント（座標取得＆そのまま予定追加）
+      map.on('click', (e) => {
+        const lat = Number(e.latlng.lat.toFixed(4));
+        const lng = Number(e.latlng.lng.toFixed(4));
+
+        if (tempClickMarker) {
+          map.removeLayer(tempClickMarker);
+        }
+
+        const popupContent = `
+          <div class="text-xs font-sans p-1 space-y-2">
+            <div class="font-bold text-slate-800">選択した地点の座標</div>
+            <div class="text-[11px] text-slate-500">緯度: ${lat} / 経度: ${lng}</div>
+            <button onclick="openAddModalWithCoords(${lat}, ${lng})" class="w-full py-1.5 px-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg text-xs cursor-pointer">
+              ＋ この場所をしおりに追加
+            </button>
+          </div>
+        `;
+
+        tempClickMarker = L.marker([lat, lng]).addTo(map).bindPopup(popupContent).openPopup();
+      });
+    }
+
+    function renderMapMarkersAndRoute() {
+      if (!map || appState.currentDayIndex === 'sns') return;
+      markersLayer.clearLayers();
+      routeLineLayer.clearLayers();
+
+      const currentDay = appState.days[appState.currentDayIndex];
+      if (!currentDay || !currentDay.spots.length) return;
+
+      // 時刻順にソート
+      const sortedSpots = [...currentDay.spots].sort((a, b) => a.time.localeCompare(b.time));
+      const latLngs = [];
+
+      sortedSpots.forEach((spot, idx) => {
+        const meta = CATEGORY_META[spot.category] || CATEGORY_META.other;
+        const coords = [spot.lat, spot.lng];
+        latLngs.push(coords);
+
+        const customIcon = L.divIcon({
+          className: '',
+          html: `<div class="custom-pin ${meta.pinClass}">${idx + 1}</div>`,
+          iconSize: [32, 32],
+          iconAnchor: [16, 16],
+          popupAnchor: [0, -16]
+        });
+
+        const marker = L.marker(coords, { icon: customIcon });
+        const weatherBadge = spot.weather ? `${spot.weather.icon} ${spot.weather.temp}°C` : '';
+
+        marker.bindPopup(`
+          <div class="font-sans text-xs min-w-[180px] space-y-1">
+            <div class="flex items-center justify-between gap-2">
+              <span class="font-bold text-blue-600">${spot.time}</span>
+              <span class="text-[11px] font-medium text-slate-600">${weatherBadge}</span>
+            </div>
+            <div class="font-bold text-sm text-slate-900">${escapeHtml(spot.name)}</div>
+            <div class="text-[11px] text-slate-500">${escapeHtml(spot.memo || '')}</div>
+            <div class="pt-1 border-t border-slate-100 flex justify-between items-center text-[11px]">
+              <span class="text-slate-500">予算: ¥${Number(spot.cost).toLocaleString()}</span>
+              <span class="${spot.paid ? 'text-emerald-600 font-bold' : 'text-amber-600'}">${spot.paid ? '支払済' : '未払い'}</span>
+            </div>
+          </div>
+        `);
+
+        marker.on('click', () => {
+          highlightSpotCard(spot.id);
+        });
+
+        marker.addTo(markersLayer);
+      });
+
+      // スポット間を結ぶ移動ルート線（破線ポリライン）
+      if (latLngs.length >= 2) {
+        L.polyline(latLngs, {
+          color: '#2563eb',
+          weight: 3.5,
+          opacity: 0.75,
+          dashArray: '8, 8'
+        }).addTo(routeLineLayer);
+      }
+
+      fitMapToCurrentDay();
+    }
+
+    function fitMapToCurrentDay() {
+      if (!map || appState.currentDayIndex === 'sns') return;
+      const currentDay = appState.days[appState.currentDayIndex];
+      if (!currentDay || !currentDay.spots.length) return;
+
+      const bounds = L.latLngBounds(currentDay.spots.map(s => [s.lat, s.lng]));
+      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
+    }
+
+    function focusSpotOnMap(spotId) {
+      const currentDay = appState.days[appState.currentDayIndex];
+      if (!currentDay) return;
+      const spot = currentDay.spots.find(s => s.id === spotId);
+      if (!spot) return;
+
+      selectedSpotId = spotId;
+      renderItineraryList();
+
+      // モバイル画面なら自動で地図タブへ切り替え
+      if (window.innerWidth < 1024) {
+        switchMobileView('map');
+      }
+
+      setTimeout(() => {
+        map.invalidateSize();
+        map.flyTo([spot.lat, spot.lng], 15, { duration: 0.9 });
+
+        // 該当マーカーのポップアップを開く
+        markersLayer.eachLayer((layer) => {
+          const latLng = layer.getLatLng();
+          if (Math.abs(latLng.lat - spot.lat) < 0.0001 && Math.abs(latLng.lng - spot.lng) < 0.0001) {
+            layer.openPopup();
+          }
+        });
+      }, 100);
+    }
+
+    function highlightSpotCard(spotId) {
+      selectedSpotId = spotId;
+      renderItineraryList();
+      const el = document.getElementById(`spot-card-${spotId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+
+    // ==================== 2. Open-Meteo API リアル天気取得 ====================
+    async function refreshAllWeather() {
+      const statusText = document.getElementById('weather-status-text');
+      if (statusText) statusText.textContent = 'Open-Meteo APIから最新の気温・天気を取得中...';
+
+      let successCount = 0;
+
+      for (const day of appState.days) {
+        for (const spot of day.spots) {
+          try {
+            // Open-Meteo 無料天気API（APIキー不要）
+            const url = `https://api.open-meteo.com/v1/forecast?latitude=${spot.lat}&longitude=${spot.lng}&current_weather=true&timezone=Asia%2FTokyo`;
+            const res = await fetch(url);
+            if (!res.ok) throw new Error('API Error');
+            const data = await res.json();
+            if (data && data.current_weather) {
+              const code = data.current_weather.weathercode;
+              const temp = Math.round(data.current_weather.temperature);
+              spot.weather = mapWmoCodeToWeather(code, temp);
+              successCount++;
+            }
+          } catch (err) {
+            // オフライン時やAPI制限時は既存のモック天気データをフォールバック維持
+            if (!spot.weather) {
+              spot.weather = { icon: '🌤️', temp: 10, desc: '晴れ(予測)' };
+            }
+          }
+        }
+      }
+
+      saveState();
+      renderItineraryList();
+      if (statusText) {
+        statusText.textContent = successCount > 0
+          ? `Open-Meteo API 連携完了（${successCount}地点の現在気温・天気を反映済）`
+          : 'オフラインモード（キャッシュされた予報データを表示中）';
+      }
+    }
+
+    function mapWmoCodeToWeather(code, temp) {
+      if (code === 0) return { icon: '☀️', temp, desc: '快晴' };
+      if (code <= 3) return { icon: '🌤️', temp, desc: '晴れ時々曇り' };
+      if (code <= 48) return { icon: '🌫️', temp, desc: '霧・曇り' };
+      if (code <= 67) return { icon: '🌧️', temp, desc: '雨' };
+      if (code <= 77) return { icon: '❄️', temp, desc: '雪' };
+      if (code <= 82) return { icon: '🌦️', temp, desc: 'にわか雨' };
+      return { icon: '⛈️', temp, desc: '雷雨' };
+    }
+
+    // ==================== 3. 予算管理リアルタイム集計 ====================
+    function renderBudgetSummary() {
+      let totalPlanned = 0;
+      let totalPaid = 0;
+      const categoryTotals = {
+        sightseeing: 0,
+        food: 0,
+        transport: 0,
+        hotel: 0,
+        other: 0
+      };
+
+      appState.days.forEach(day => {
+        day.spots.forEach(spot => {
+          const cost = Number(spot.cost) || 0;
+          totalPlanned += cost;
+          if (spot.paid) {
+            totalPaid += cost;
+          }
+          const cat = categoryTotals.hasOwnProperty(spot.category) ? spot.category : 'other';
+          categoryTotals[cat] += cost;
+        });
+      });
+
+      const remaining = appState.totalBudget - totalPlanned;
+      const usagePercent = appState.totalBudget > 0 ? Math.min(100, Math.round((totalPlanned / appState.totalBudget) * 100)) : 0;
+
+      document.getElementById('budget-total-display').textContent = `¥${appState.totalBudget.toLocaleString()}`;
+      document.getElementById('budget-paid-display').textContent = `¥${totalPaid.toLocaleString()}`;
+      document.getElementById('budget-planned-display').textContent = `/ ¥${totalPlanned.toLocaleString()}`;
+
+      const remEl = document.getElementById('budget-remaining-display');
+      remEl.textContent = `¥${remaining.toLocaleString()}`;
+      remEl.className = `text-sm sm:text-base font-bold ${remaining < 0 ? 'text-rose-400' : 'text-emerald-400'}`;
+
+      const barEl = document.getElementById('budget-progress-bar');
+      barEl.style.width = `${usagePercent}%`;
+      barEl.className = `h-full rounded-full transition-all duration-300 ${
+        usagePercent > 100 ? 'bg-rose-500' : usagePercent > 80 ? 'bg-amber-400' : 'bg-emerald-400'
+      }`;
+
+      // カテゴリ別内訳バッジ描画
+      const breakdownEl = document.getElementById('category-breakdown');
+      breakdownEl.innerHTML = Object.entries(categoryTotals)
+        .filter(([_, val]) => val > 0)
+        .map(([key, val]) => {
+          const meta = CATEGORY_META[key];
+          return `<span class="bg-white/10 px-2 py-0.5 rounded-md">${meta.label}: ¥${val.toLocaleString()}</span>`;
+        })
+        .join('') || '<span class="text-slate-400">予定を追加すると内訳が表示されます</span>';
+    }
+
+    // ==================== 4. 旅のしおり（タイムライン）描画・操作 ====================
+    function renderDayTabs() {
+      const container = document.getElementById('day-tabs-container');
+      let html = appState.days.map((day, idx) => {
+        const isActive = appState.currentDayIndex === idx;
+        return `
+          <button onclick="selectDayTab(${idx})" class="px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer ${
+            isActive
+              ? 'bg-blue-600 text-white shadow-xs'
+              : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+          }">
+            ${escapeHtml(day.label)}
+          </button>
+        `;
+      }).join('');
+
+      // SNSストックタブ
+      const isSnsActive = appState.currentDayIndex === 'sns';
+      html += `
+        <button onclick="selectDayTab('sns')" class="px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer flex items-center gap-1 ${
+          isSnsActive
+            ? 'bg-indigo-600 text-white shadow-xs'
+            : 'bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100'
+        }">
+          <i class="fa-solid fa-bookmark"></i>
+          <span>候補 (${appState.snsStocks.length})</span>
+        </button>
+      `;
+
+      container.innerHTML = html;
+    }
+
+    function selectDayTab(indexOrSns) {
+      appState.currentDayIndex = indexOrSns;
+      selectedSpotId = null;
+      saveState();
+      renderAll();
+    }
+
+    function addNewDay() {
+      const nextNum = appState.days.length + 1;
+      appState.days.push({
+        id: `day-${Date.now()}`,
+        label: `Day ${nextNum}`,
+        date: '',
+        spots: []
+      });
+      appState.currentDayIndex = appState.days.length - 1;
+      saveState();
+      renderAll();
+      showToast(`Day ${nextNum} を追加しました`, 'info');
+    }
+
+    function renderItineraryList() {
+      const container = document.getElementById('itinerary-list');
+      const currentDay = appState.days[appState.currentDayIndex];
+
+      if (!currentDay || currentDay.spots.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-10 px-4 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+            <i class="fa-solid fa-map-pin text-2xl text-slate-300 mb-2"></i>
+            <p class="text-xs font-semibold text-slate-600">まだ予定が登録されていません</p>
+            <p class="text-[11px] text-slate-400 mt-1">下のボタン、または右側の地図をクリックしてスポットを追加できます。</p>
+          </div>
+        `;
+        return;
+      }
+
+      // 時刻順にソート
+      const sortedSpots = [...currentDay.spots].sort((a, b) => a.time.localeCompare(b.time));
+
+      container.innerHTML = sortedSpots.map((spot, idx) => {
+        const meta = CATEGORY_META[spot.category] || CATEGORY_META.other;
+        const isSelected = selectedSpotId === spot.id;
+        const weatherHtml = spot.weather
+          ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-sky-50 text-sky-700 border border-sky-200" title="Open-Meteo 天気予報">
+               ${spot.weather.icon} ${spot.weather.temp}°C
+             </span>`
+          : '';
+
+        return `
+          <div id="spot-card-${spot.id}" onclick="focusSpotOnMap('${spot.id}')"
+               class="timeline-item relative pl-11 cursor-pointer group">
+            <div class="timeline-line"></div>
+
+            <!-- 番号バッジ -->
+            <div class="absolute left-1.5 top-2.5 w-7 h-7 rounded-full ${meta.pinClass} text-white font-bold text-xs flex items-center justify-center shadow-xs z-10 ring-4 ring-white">
+              ${idx + 1}
+            </div>
+
+            <!-- カード本体 -->
+            <div class="rounded-2xl p-3 border transition-all ${
+              isSelected
+                ? 'bg-blue-50/70 border-blue-500 shadow-sm'
+                : 'bg-white border-slate-200 hover:border-blue-300 hover:shadow-xs'
+            }">
+              <div class="flex items-start justify-between gap-2 mb-1.5">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="font-bold text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">
+                    ${escapeHtml(spot.time)}
+                  </span>
+                  <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md ${meta.badgeClass}">
+                    <i class="fa-solid ${meta.icon} mr-1"></i>${meta.label}
+                  </span>
+                  ${weatherHtml}
+                </div>
+
+                <!-- 編集・削除アクション -->
+                <div class="flex items-center gap-1 opacity-80 group-hover:opacity-100" onclick="event.stopPropagation()">
+                  <button onclick="openEditModal('${spot.id}')" class="p-1.5 text-slate-400 hover:text-blue-600 rounded-lg hover:bg-slate-100 transition cursor-pointer" title="編集">
+                    <i class="fa-solid fa-pen text-xs"></i>
+                  </button>
+                  <button onclick="deleteSpot('${spot.id}')" class="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-slate-100 transition cursor-pointer" title="削除">
+                    <i class="fa-solid fa-trash text-xs"></i>
+                  </button>
+                </div>
+              </div>
+
+              <h4 class="font-bold text-sm text-slate-900 mb-1 leading-snug">${escapeHtml(spot.name)}</h4>
+
+              ${spot.memo ? `<p class="text-xs text-slate-600 mb-2.5 leading-relaxed">${escapeHtml(spot.memo)}</p>` : ''}
+
+              <!-- フッター: 予算・支払い済みチェック -->
+              <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-xs" onclick="event.stopPropagation()">
+                <label class="inline-flex items-center gap-1.5 cursor-pointer select-none">
+                  <input type="checkbox" ${spot.paid ? 'checked' : ''} onchange="toggleSpotPaid('${spot.id}')"
+                    class="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300 cursor-pointer" />
+                  <span class="${spot.paid ? 'text-emerald-700 font-semibold' : 'text-slate-500'}">
+                    ${spot.paid ? '支払済' : '予定予算'}
+                  </span>
+                </label>
+
+                <div class="font-bold text-slate-800">
+                  ¥${Number(spot.cost).toLocaleString()}
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function toggleSpotPaid(spotId) {
+      const currentDay = appState.days[appState.currentDayIndex];
+      if (!currentDay) return;
+      const spot = currentDay.spots.find(s => s.id === spotId);
+      if (spot) {
+        spot.paid = !spot.paid;
+        saveState();
+        renderBudgetSummary();
+        renderItineraryList();
+      }
+    }
+
+    function deleteSpot(spotId) {
+      const currentDay = appState.days[appState.currentDayIndex];
+      if (!currentDay) return;
+      currentDay.spots = currentDay.spots.filter(s => s.id !== spotId);
+      saveState();
+      renderAll();
+      showToast('予定を削除しました', 'info');
+    }
+
+    // ==================== 5. 予定追加・編集モーダル操作 ====================
+    function openAddModal() {
+      if (appState.currentDayIndex === 'sns') {
+        appState.currentDayIndex = 0;
+        renderDayTabs();
+      }
+      document.getElementById('spot-modal-title').textContent = '新しい予定を追加';
+      document.getElementById('edit-spot-id').value = '';
+      document.getElementById('spot-time').value = '13:00';
+      document.getElementById('spot-name').value = '';
+      document.getElementById('spot-category').value = 'sightseeing';
+      document.getElementById('spot-cost').value = '1500';
+      document.getElementById('spot-lat').value = '';
+      document.getElementById('spot-lng').value = '';
+      document.getElementById('spot-memo').value = '';
+
+      const modal = document.getElementById('spot-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function openAddModalWithCoords(lat, lng) {
+      openAddModal();
+      document.getElementById('spot-lat').value = lat;
+      document.getElementById('spot-lng').value = lng;
+      document.getElementById('spot-name').focus();
+    }
+
+    function openEditModal(spotId) {
+      const currentDay = appState.days[appState.currentDayIndex];
+      const spot = currentDay.spots.find(s => s.id === spotId);
+      if (!spot) return;
+
+      document.getElementById('spot-modal-title').textContent = '予定を編集';
+      document.getElementById('edit-spot-id').value = spot.id;
+      document.getElementById('spot-time').value = spot.time;
+      document.getElementById('spot-name').value = spot.name;
+      document.getElementById('spot-category').value = spot.category;
+      document.getElementById('spot-cost').value = spot.cost;
+      document.getElementById('spot-lat').value = spot.lat;
+      document.getElementById('spot-lng').value = spot.lng;
+      document.getElementById('spot-memo').value = spot.memo || '';
+
+      const modal = document.getElementById('spot-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeSpotModal() {
+      const modal = document.getElementById('spot-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    async function geocodeSpotName(name) {
+      const query = `${name}, 日本`;
+      const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(query)}`;
+      const response = await fetch(url, { headers: { 'Accept-Language': 'ja' } });
+      if (!response.ok) throw new Error('位置検索に失敗しました');
+      const results = await response.json();
+      if (!results.length) throw new Error('場所が見つかりません。施設名や駅名をもう少し具体的に入力してください');
+      return { lat: Number(results[0].lat), lng: Number(results[0].lon) };
+    }
+
+    async function handleSaveSpot(e) {
+      e.preventDefault();
+      const editId = document.getElementById('edit-spot-id').value;
+      const time = document.getElementById('spot-time').value;
+      const name = document.getElementById('spot-name').value.trim();
+      const category = document.getElementById('spot-category').value;
+      const cost = Number(document.getElementById('spot-cost').value) || 0;
+      const memo = document.getElementById('spot-memo').value.trim();
+      const currentDay = appState.days[appState.currentDayIndex];
+      if (!currentDay) return;
+
+      const oldSpot = editId ? currentDay.spots.find(s => s.id === editId) : null;
+      let lat = oldSpot && oldSpot.name === name ? Number(oldSpot.lat) : Number(document.getElementById('spot-lat').value);
+      let lng = oldSpot && oldSpot.name === name ? Number(oldSpot.lng) : Number(document.getElementById('spot-lng').value);
+
+      if (!Number.isFinite(lat) || !Number.isFinite(lng) || !lat || !lng) {
+        const submitButton = document.querySelector('#spot-form button[type="submit"]');
+        if (submitButton) { submitButton.disabled = true; submitButton.textContent = '場所を検索中…'; }
+        try {
+          const point = await geocodeSpotName(name);
+          lat = point.lat; lng = point.lng;
+        } catch (error) {
+          showToast(error.message || '場所を地図上で特定できませんでした', 'error');
+          if (submitButton) { submitButton.disabled = false; submitButton.textContent = '保存する'; }
+          return;
+        }
+        if (submitButton) { submitButton.disabled = false; submitButton.textContent = '保存する'; }
+      }
+
+      if (editId) {
+        if (oldSpot) Object.assign(oldSpot, { time, name, category, cost, lat, lng, memo });
+        showToast('予定を更新しました', 'success');
+      } else {
+        currentDay.spots.push({
+          id: `spot-${Date.now()}`, time, name, category, lat, lng, cost,
+          paid: false, memo, weather: { icon: '🌤️', temp: 9, desc: '取得中' }
+        });
+        showToast(`「${name}」をしおりに追加しました`, 'success');
+      }
+
+      if (tempClickMarker && map) { map.removeLayer(tempClickMarker); tempClickMarker = null; }
+      closeSpotModal();
+      saveState();
+      renderAll();
+      refreshAllWeather();
+    }
+
+    // ==================== 6. SNSストック機能 ====================
+    function renderSnsStockList() {
+      const container = document.getElementById('sns-stock-list');
+      if (!appState.snsStocks.length) {
+        container.innerHTML = `<p class="text-xs text-slate-400 text-center py-6">保存されたSNS候補はありません。</p>`;
+        return;
+      }
+
+      container.innerHTML = appState.snsStocks.map(item => {
+        const meta = CATEGORY_META[item.category] || CATEGORY_META.other;
+        return `
+          <div class="bg-white border border-slate-200 rounded-2xl p-3 shadow-2xs space-y-2">
+            <div class="flex items-start justify-between gap-2">
+              <div>
+                <span class="inline-block text-[10px] font-semibold px-2 py-0.5 rounded-md ${meta.badgeClass} mb-1">
+                  ${meta.label}
+                </span>
+                <h4 class="font-bold text-xs text-slate-900">${escapeHtml(item.title)}</h4>
+              </div>
+              <button onclick="deleteSnsStock('${item.id}')" class="text-slate-400 hover:text-rose-500 p-1 cursor-pointer">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+            <p class="text-[11px] text-slate-500">${escapeHtml(item.memo)}</p>
+            <div class="text-[10px] text-indigo-600 truncate bg-indigo-50/60 px-2 py-1 rounded-md">
+              <i class="fa-solid fa-link mr-1"></i>${escapeHtml(item.url)}
+            </div>
+            <div class="pt-1 flex items-center justify-between">
+              <span class="text-xs font-bold text-slate-700">目安予算: ¥${Number(item.estimatedCost || 0).toLocaleString()}</span>
+              <button onclick="promoteSnsToItinerary('${item.id}')" class="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition cursor-pointer">
+                ＋ Day 1のしおりへ追加
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function handleAddSnsStock(e) {
+      e.preventDefault();
+      const input = document.getElementById('sns-url-input');
+      const rawUrl = input.value.trim();
+      if (!rawUrl) return;
+
+      let parsedUrl;
+      try {
+        parsedUrl = new URL(rawUrl);
+        if (!['http:', 'https:'].includes(parsedUrl.protocol)) throw new Error('invalid protocol');
+      } catch (_) {
+        showToast('有効なURL（https://...）を入力してください', 'info');
+        input.focus();
+        return;
+      }
+
+      // URLだけでは投稿本文や正確な場所を取得できないため、推測で確定情報にしない
+      const hostLabel = parsedUrl.hostname.replace(/^www\./, '');
+      const title = `${hostLabel} から保存した候補`;
+      const isOtaru = /otaru/i.test(parsedUrl.href);
+      appState.snsStocks.unshift({
+        id: `sns-${Date.now()}`,
+        title,
+        url: parsedUrl.href,
+        category: 'other',
+        lat: isOtaru ? 43.1950 : 43.0642,
+        lng: isOtaru ? 141.0030 : 141.3469,
+        estimatedCost: 0,
+        memo: 'URLを保存しました。スポット名・位置・予算は内容を確認して編集してください。'
+      });
+
+      input.value = '';
+      saveState();
+      renderDayTabs();
+      renderSnsStockList();
+      showToast('候補URLを保存しました。場所と予算を確認してください', 'success');
+    }
+
+    function promoteSnsToItinerary(snsId) {
+      const item = appState.snsStocks.find(s => s.id === snsId);
+      if (!item) return;
+
+      const destinationDay = appState.currentDayIndex === 'sns'
+        ? appState.days[0]
+        : appState.days[appState.currentDayIndex];
+      (destinationDay || appState.days[0]).spots.push({
+        id: `spot-${Date.now()}`,
+        time: '16:30',
+        name: item.title,
+        category: item.category,
+        lat: item.lat,
+        lng: item.lng,
+        cost: item.estimatedCost,
+        paid: false,
+        memo: `${item.memo} (${item.url})`,
+        weather: { icon: '🌤️', temp: 8, desc: '晴れ' }
+      });
+
+      appState.snsStocks = appState.snsStocks.filter(s => s.id !== snsId);
+      if (appState.currentDayIndex === 'sns') appState.currentDayIndex = 0;
+      saveState();
+      renderAll();
+      refreshAllWeather();
+      showToast(`${(destinationDay || appState.days[0]).label}のしおりに追加しました`, 'success');
+    }
+
+    function deleteSnsStock(snsId) {
+      appState.snsStocks = appState.snsStocks.filter(s => s.id !== snsId);
+      saveState();
+      renderDayTabs();
+      renderSnsStockList();
+    }
+
+    function openBudgetTableModal() {
+      renderBudgetTable();
+      const modal = document.getElementById('budget-table-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeBudgetTableModal() {
+      const modal = document.getElementById('budget-table-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function renderBudgetTable() {
+      const rows = [];
+      const categoryTotals = {};
+      let planned = 0;
+      let paid = 0;
+      appState.days.forEach((day, dayIndex) => {
+        day.spots.forEach(spot => {
+          const cost = Number(spot.cost) || 0;
+          const categoryKey = CATEGORY_META[spot.category] ? spot.category : 'other';
+          const categoryName = CATEGORY_META[categoryKey].label;
+          planned += cost;
+          if (spot.paid) paid += cost;
+          categoryTotals[categoryKey] = (categoryTotals[categoryKey] || 0) + cost;
+          rows.push({ day: day.label || `Day ${dayIndex + 1}`, name: spot.name || '名称未設定', categoryName, cost, paid: !!spot.paid });
+        });
+      });
+      const remaining = Number(appState.totalBudget || 0) - planned;
+      const yen = value => `¥${Number(value || 0).toLocaleString('ja-JP')}`;
+      const categoryHtml = Object.entries(categoryTotals).filter(([,v]) => v > 0).map(([key,value]) => `
+        <div class="rounded-xl bg-slate-50 border border-slate-200 p-3"><div class="text-[11px] text-slate-500">${escapeHtml(CATEGORY_META[key].label)}</div><div class="font-bold text-sm text-slate-800 mt-1">${yen(value)}</div></div>
+      `).join('') || '<p class="text-xs text-slate-500">費用データはまだありません。</p>';
+      const tableRows = rows.map(row => `
+        <tr class="border-t border-slate-100">
+          <td class="px-3 py-2 text-slate-500 whitespace-nowrap">${escapeHtml(row.day)}</td>
+          <td class="px-3 py-2 font-medium text-slate-800">${escapeHtml(row.name)}</td>
+          <td class="px-3 py-2 text-slate-500 whitespace-nowrap">${escapeHtml(row.categoryName)}</td>
+          <td class="px-3 py-2 text-right font-semibold text-slate-800 whitespace-nowrap">${yen(row.cost)}</td>
+          <td class="px-3 py-2 text-center whitespace-nowrap"><span class="inline-block rounded-full px-2 py-1 text-[10px] font-bold ${row.paid ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}">${row.paid ? '支払済' : '未払い'}</span></td>
+        </tr>`).join('');
+      document.getElementById('budget-table-content').innerHTML = `
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <div class="rounded-xl bg-slate-900 p-3 text-white"><div class="text-[10px] text-slate-300">総予算</div><div class="text-base font-bold mt-1">${yen(appState.totalBudget)}</div></div>
+          <div class="rounded-xl bg-blue-50 border border-blue-100 p-3"><div class="text-[10px] text-blue-700">予定合計</div><div class="text-base font-bold text-slate-800 mt-1">${yen(planned)}</div></div>
+          <div class="rounded-xl bg-emerald-50 border border-emerald-100 p-3"><div class="text-[10px] text-emerald-700">支払済</div><div class="text-base font-bold text-slate-800 mt-1">${yen(paid)}</div></div>
+          <div class="rounded-xl ${remaining < 0 ? 'bg-rose-50 border-rose-100' : 'bg-amber-50 border-amber-100'} border p-3"><div class="text-[10px] ${remaining < 0 ? 'text-rose-700' : 'text-amber-700'}">残り予算</div><div class="text-base font-bold ${remaining < 0 ? 'text-rose-700' : 'text-slate-800'} mt-1">${yen(remaining)}</div></div>
+        </div>
+        <section><h4 class="text-xs font-bold text-slate-700 mb-2">カテゴリ別内訳</h4><div class="grid grid-cols-2 sm:grid-cols-5 gap-2">${categoryHtml}</div></section>
+        <section><div class="flex items-center justify-between mb-2"><h4 class="text-xs font-bold text-slate-700">費用一覧</h4><span class="text-[10px] text-slate-500">${rows.length}件</span></div>
+          <div class="overflow-x-auto rounded-xl border border-slate-200"><table class="w-full text-xs text-left min-w-[620px]"><thead class="bg-slate-50 text-slate-500"><tr><th class="px-3 py-2 font-semibold">日程</th><th class="px-3 py-2 font-semibold">スポット</th><th class="px-3 py-2 font-semibold">カテゴリ</th><th class="px-3 py-2 text-right font-semibold">金額</th><th class="px-3 py-2 text-center font-semibold">支払い</th></tr></thead><tbody>${tableRows || '<tr><td colspan="5" class="px-3 py-8 text-center text-slate-400">スポットを追加すると、ここに予算が表示されます。</td></tr>'}</tbody></table></div>
+        </section>`;
+    }
+
+    // ==================== 7. 総予算編集 & リセットモーダル ====================
+    function openBudgetEditModal() {
+      document.getElementById('total-budget-input').value = appState.totalBudget;
+      const modal = document.getElementById('budget-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeBudgetModal() {
+      const modal = document.getElementById('budget-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function handleSaveTotalBudget(e) {
+      e.preventDefault();
+      const val = Number(document.getElementById('total-budget-input').value);
+      if (!isNaN(val) && val >= 0) {
+        appState.totalBudget = val;
+        saveState();
+        renderBudgetSummary();
+        showToast(`総予算を ¥${val.toLocaleString()} に更新しました`, 'success');
+      }
+      closeBudgetModal();
+    }
+
+    function openResetModal() {
+      const modal = document.getElementById('reset-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeResetModal() {
+      const modal = document.getElementById('reset-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function executeResetData() {
+      appState = JSON.parse(JSON.stringify(DEFAULT_STATE));
+      saveState();
+      closeResetModal();
+      renderAll();
+      refreshAllWeather();
+      showToast('初期サンプルデータにリセットしました', 'info');
+    }
+
+    // ==================== 8. 出発リマインダー通知テスト ====================
+    function triggerNotificationTest() {
+      const activeDay = appState.currentDayIndex === 'sns'
+        ? appState.days[0]
+        : appState.days[appState.currentDayIndex];
+      const spots = activeDay ? [...activeDay.spots].sort((a, b) => a.time.localeCompare(b.time)) : [];
+      const now = new Date();
+      const nowMinutes = now.getHours() * 60 + now.getMinutes();
+      const nextSpot = spots.find(spot => {
+        const [hours, minutes] = String(spot.time || '00:00').split(':').map(Number);
+        return hours * 60 + minutes >= nowMinutes;
+      }) || spots[0] || { time: '12:00', name: '次の予定' };
+      const title = '⏰ 出発リマインダーのテスト';
+      const body = `${nextSpot.time}「${nextSpot.name}」の予定をお知らせします。`;
+
+      showToast(`${title}\n${body}`, 'reminder');
+
+      if ('Notification' in window) {
+        if (Notification.permission === 'granted') {
+          new Notification(title, { body });
+        } else if (Notification.permission !== 'denied') {
+          Notification.requestPermission().then(permission => {
+            if (permission === 'granted') new Notification(title, { body });
+          }).catch(() => {});
+        }
+      }
+    }
+
+    // ==================== 9. モバイル表示切替 & ユーティリティ ====================
+    function switchMobileView(view) {
+      const leftPanel = document.getElementById('left-panel');
+      const rightPanel = document.getElementById('right-panel');
+      const tabPlan = document.getElementById('mobile-tab-plan');
+      const tabMap = document.getElementById('mobile-tab-map');
+
+      if (view === 'plan') {
+        leftPanel.classList.remove('hidden');
+        rightPanel.classList.add('hidden');
+        tabPlan.className = 'flex-1 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 text-white shadow-xs transition';
+        tabMap.className = 'flex-1 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition';
+      } else {
+        leftPanel.classList.add('hidden');
+        rightPanel.classList.remove('hidden');
+        tabMap.className = 'flex-1 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 text-white shadow-xs transition';
+        tabPlan.className = 'flex-1 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition';
+        setTimeout(() => {
+          map.invalidateSize();
+          fitMapToCurrentDay();
+        }, 50);
+      }
+    }
+
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+
+      const styles = {
+        success: 'bg-slate-900 text-white border-slate-700',
+        info: 'bg-blue-600 text-white border-blue-500',
+        reminder: 'bg-amber-500 text-slate-950 border-amber-400 font-bold'
+      };
+
+      toast.className = `toast-enter pointer-events-auto rounded-2xl px-4 py-3 shadow-lg border text-xs whitespace-pre-line leading-relaxed ${styles[type] || styles.info}`;
+      toast.textContent = message;
+
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.3s ease';
+        setTimeout(() => toast.remove(), 300);
+      }, 4500);
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+  </script>
+</body>
+</html>
