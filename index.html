@@ -212,12 +212,12 @@
 
     html, body { min-height:100%; }
     body { height:100vh; height:100dvh; }
-    #bottom-nav { padding-bottom:calc(6px + env(safe-area-inset-bottom)); min-height:64px; }
+    #bottom-nav { padding-bottom:calc(14px + env(safe-area-inset-bottom)); padding-top:8px; min-height:76px; }
     #offline-banner { padding-top:7px; padding-bottom:7px; }
     #save-status { white-space:nowrap; }
     #install-app { min-height:38px; }
     button, a { touch-action:manipulation; }
-    input, select, textarea { font-size:16px; }
+    input, select, textarea { font-size:16px !important; }
     @media (max-width:640px) {
       header { padding-left:12px !important; padding-right:12px !important; }
       #install-app span { display:none; }
@@ -227,8 +227,8 @@
   
     /* Mobile comfort pass */
     @media(max-width:640px){
-      #bottom-nav{min-height:76px;padding:7px 4px calc(9px + env(safe-area-inset-bottom));gap:2px;}
-      #bottom-nav button{flex:1;min-width:0;padding:6px 2px 4px!important;gap:4px!important;border-radius:12px;font-size:11px;}
+      #bottom-nav{min-height:88px;padding:9px 4px calc(18px + env(safe-area-inset-bottom));gap:3px;}
+      #bottom-nav button{flex:1;min-width:0;min-height:48px;padding:7px 2px 5px!important;gap:4px!important;border-radius:12px;font-size:11px;}
       #bottom-nav button i{font-size:19px!important;}
       #bottom-nav button span{font-size:10px;line-height:1.2;}
       #panel-scroll-area{padding-bottom:calc(28px + env(safe-area-inset-bottom))!important;}
